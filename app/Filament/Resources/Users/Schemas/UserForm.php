@@ -4,8 +4,12 @@ namespace App\Filament\Resources\Users\Schemas;
 
 use Filament\Forms\Components\DatePicker;
 use Filament\Forms\Components\DateTimePicker;
+use Filament\Forms\Components\FileUpload;
+use Filament\Forms\Components\Hidden;
+use Filament\Forms\Components\Select;
 use Filament\Forms\Components\TextInput;
 use Filament\Schemas\Schema;
+use Illuminate\Support\Facades\Hash;
 
 class UserForm
 {
@@ -13,27 +17,48 @@ class UserForm
     {
         return $schema
             ->components([
+                FileUpload::make('profile_photo')
+                    ->image()
+                    ->avatar()
+                    ->columnSpanFull(),
+                TextInput::make('nik')
+                    ->label('NIK')
+                    ->maxLength(16)
+                    ->minLength(16)
+                    ->required(),
                 TextInput::make('name')
                     ->required(),
                 TextInput::make('email')
                     ->label('Email address')
                     ->email()
                     ->required(),
-                DateTimePicker::make('email_verified_at'),
+                Hidden::make('email_verified_at')
+                    ->default(fn() => now()),
                 TextInput::make('password')
                     ->password()
-                    ->required(),
-                TextInput::make('role')
+                    ->dehydrateStateUsing(fn($state) => Hash::make($state))
+                    ->dehydrated(fn($state) => filled($state))
+                    ->required(fn(string $context): bool => $context === 'create'),
+                Select::make('role')
                     ->required()
-                    ->default('user'),
-                TextInput::make('profile_photo'),
+                    ->live()
+                    ->options([
+                        'admin' => 'Administrator',
+                        'user' => 'User',
+                    ])
+                    ->native(false),
                 TextInput::make('phone')
                     ->tel(),
                 DatePicker::make('date_of_birth'),
-                TextInput::make('nik'),
-                TextInput::make('position')
-                    ->required()
-                    ->default('Staff'),
+                Select::make('position')
+                    ->options([
+                        'Staff' => 'Staff',
+                        'Intern' => 'Magang',
+                    ])
+                    ->hidden(function($get){
+                        return $get('role') === 'admin';
+                    })
+                    ->native(false),
             ]);
     }
 }

@@ -17,6 +17,7 @@ return new class extends Migration
             $table->time('start_time');
             $table->time('end_time');
             $table->integer('tolerance')->default(0); // minutes allowed late
+            $table->boolean('default')->default(false);
             $table->timestamps();
         });
         Schema::create('user_shift', function (Blueprint $table) {
