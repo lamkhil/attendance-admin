@@ -5,6 +5,7 @@ namespace App\Filament\Resources\Users\Pages;
 use App\Filament\Resources\Users\UserResource;
 use Filament\Actions\CreateAction;
 use Filament\Resources\Pages\ListRecords;
+use Filament\Schemas\Components\Tabs\Tab;
 
 class ListUsers extends ListRecords
 {
@@ -13,7 +14,27 @@ class ListUsers extends ListRecords
     protected function getHeaderActions(): array
     {
         return [
-            CreateAction::make(),
+            CreateAction::make()
+                ->label('Tambah')
+                ->icon('heroicon-o-user-plus'),
+        ];
+    }
+
+    public function getTabs(): array
+    {
+        return [
+            Tab::make('user')
+                ->label('Pengguna')
+                ->icon('heroicon-o-users')
+                ->modifyQueryUsing(function($query){
+                    return $query->where('role', 'user');
+                }),
+            Tab::make('admin')
+                ->label('Administrator')
+                ->icon('heroicon-o-shield-check')
+                ->modifyQueryUsing(function($query){
+                    return $query->where('role', 'admin');
+                }),
         ];
     }
 }
