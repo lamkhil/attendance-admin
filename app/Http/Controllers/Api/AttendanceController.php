@@ -71,7 +71,7 @@ class AttendanceController
             // 5️⃣ Hitung jam kerja (kalau < 2 log → 0)
             $workHours = 0;
             if ($checkIn && $checkOut) {
-                $workHours = max(0, $checkIn->diffInHours($checkOut));
+                $workHours = max(0, Carbon::parse($checkIn)->diffInHours($checkOut));
             }
 
             // 6️⃣ Tentukan status
@@ -91,7 +91,7 @@ class AttendanceController
                 $isEarlyLeave = false;
 
                 if ($checkOut) {
-                    $isEarlyLeave = $checkOut->lt($scheduleEnd);
+                    $isEarlyLeave = Carbon::parse($checkOut)->lt($scheduleEnd);
                 }
 
                 if ($isLate) {
