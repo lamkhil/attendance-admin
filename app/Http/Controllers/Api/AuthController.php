@@ -10,6 +10,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Carbon;
+use Illuminate\Support\Facades\Log;
 
 class AuthController extends Controller
 {
@@ -23,9 +24,11 @@ class AuthController extends Controller
 
         $user = User::where('email', $request->email)->first();
 
+        Log::info('Login attempt', ['email' => $request->email]);
+
         if (!$user || !Hash::check($request->password, $user->password)) {
             return response()->json([
-                'message' => 'Email atau password salah'
+                'message' => 'Email atau password salah.'
             ], 401);
         }
 
@@ -39,9 +42,12 @@ class AuthController extends Controller
         ]);
 
         $user->notify(new OtpNotification($otp, 'login'));
+        $token = $user->createToken('api-token')->plainTextToken;
 
         return response()->json([
-            'message' => 'OTP dikirim ke email'
+            'message' => 'OTP dikirim ke email',
+            'token' => $token,
+            'data' => $user
         ]);
     }
 
@@ -76,7 +82,7 @@ class AuthController extends Controller
         return response()->json([
             'message' => 'Login berhasil',
             'token' => $token,
-            'user' => $user,
+            'data' => $user,
         ]);
     }
 
@@ -150,7 +156,13 @@ class AuthController extends Controller
     public function me(Request $request)
     {
         return response()->json([
-            'user' => $request->user(),
+            'data' => $request->user(),
         ]);
+    }
+    
+    public function allUsers(Request $request)
+    {
+        $users = User::paginate(10);
+        return response()->json($users);
     }
 }

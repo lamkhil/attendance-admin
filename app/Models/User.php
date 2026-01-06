@@ -4,9 +4,11 @@ namespace App\Models;
 
 // use Illuminate\Contracts\Auth\MustVerifyEmail;
 
+use Carbon\Carbon;
 use Filament\Models\Contracts\FilamentUser;
 use Filament\Panel;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Database\Eloquent\Relations\HasOne;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
 use Laravel\Sanctum\HasApiTokens;
@@ -37,6 +39,10 @@ class User extends Authenticatable implements FilamentUser
         'remember_token',
     ];
 
+    protected $appends = [
+        'current_shift'
+    ];
+
     /**
      * Get the attributes that should be cast.
      *
@@ -53,5 +59,73 @@ class User extends Authenticatable implements FilamentUser
     public function canAccessPanel(Panel $panel): bool
     {
         return $this->role === 'admin';
+    }
+
+    /**
+     * Relasi attendance hari ini
+     */
+    public function todayAttendance(): HasOne
+    {
+        return $this->hasOne(Attendance::class)
+            ->whereDate('date', now());
+    }
+
+    /**
+     * Attribute: today
+     */
+    public function getTodayAttribute()
+    {
+        $attendance = $this->todayAttendance;
+
+        if (! $attendance) {
+            return null;
+        }
+
+        return [
+            'date' => $attendance->date,
+            'day' => Carbon::parse($attendance->date)->translatedFormat('l'),
+
+            'check_in' => optional($attendance->check_in)?->format('H:i'),
+            'check_out' => optional($attendance->check_out)?->format('H:i'),
+
+            'status' => $attendance->status,
+            'work_minutes' => $attendance->work_minutes,
+        ];
+    }
+
+    public function getCurrentShiftAttribute(): ?array
+    {
+        $now = Carbon::now();
+        $day = $now->dayOfWeek; 
+        // 1 = Monday ... 6 = Saturday, 0 = Sunday
+
+        // Sunday = libur
+        if ($day === Carbon::SUNDAY) {
+            return null;
+        }
+
+        // Default
+        $start = '07:30';
+        $end   = '16:00';
+        $type  = 'normal';
+
+        // Friday
+        if ($day === Carbon::FRIDAY) {
+            $end = '16:30';
+            $type = 'jumat';
+        }
+
+        // Saturday
+        if ($day === Carbon::SATURDAY) {
+            $start = '09:00';
+            $end   = '14:00';
+            $type  = 'sabtu';
+        }
+
+        return [
+            'start' => $start,
+            'end'   => $end,
+            'type'  => $type,
+        ];
     }
 }

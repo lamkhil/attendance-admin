@@ -13,9 +13,9 @@ return new class extends Migration
     {
         Schema::create('attendances', function (Blueprint $table) {
             $table->id();
-             $table->unsignedBigInteger('user_id');
+            $table->string('slug')->unique();
+            $table->unsignedBigInteger('user_id');
             $table->date('date');
-            $table->unsignedBigInteger('shift_id')->nullable();
 
             $table->dateTime('check_in')->nullable();
             $table->decimal('check_in_lat', 10, 7)->nullable();
@@ -27,15 +27,14 @@ return new class extends Migration
             $table->decimal('check_out_lng', 10, 7)->nullable();
             $table->string('check_out_photo')->nullable();
 
-            $table->enum('status', ['hadir','telat','izin','cuti'])->default('hadir');
+            $table->enum('status', ['hadir', 'telat', 'izin', 'cuti'])->default('hadir');
             $table->integer('work_hours')->default(0);
             $table->integer('overtime_hours')->default(0);
 
             $table->timestamps();
 
-            $table->unique(['user_id','date']);
+            $table->unique(['user_id', 'date']);
             $table->foreign('user_id')->references('id')->on('users')->cascadeOnDelete();
-            $table->foreign('shift_id')->references('id')->on('shifts');
         });
     }
 

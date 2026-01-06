@@ -14,7 +14,6 @@ class UsersTable
     public static function configure(Table $table): Table
     {
         return $table
-            ->modifyQueryUsing(fn ($query) => $query->where('role', '!=', 'admin'))
             ->columns([
                 TextColumn::make('name')
                     ->searchable(),

@@ -15,7 +15,6 @@ return new class extends Migration
             $table->id();
             $table->unsignedBigInteger('attendance_id');
             $table->unsignedBigInteger('user_id');
-            $table->enum('type', ['check_in', 'check_out', 'break_start', 'break_end']);
             $table->dateTime('timestamp');
             $table->decimal('lat', 10, 7)->nullable();
             $table->decimal('lng', 10, 7)->nullable();
