@@ -7,6 +7,7 @@ return [
 
     'allowed_origins' => [
         'https://hadir.dpmptsp-surabaya.my.id',
+        '*'
     ],
 
     'allowed_headers' => ['*'],

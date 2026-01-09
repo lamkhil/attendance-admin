@@ -119,7 +119,7 @@ class AttendanceController
                 'check_out_photo' => $lastLog?->photo_url,
 
                 // summary
-                'work_hours' => $workHours,
+                'work_hours' => (int)$workHours,
                 'status' => $status,
             ]);
 
