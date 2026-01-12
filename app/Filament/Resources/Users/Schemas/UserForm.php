@@ -53,7 +53,7 @@ class UserForm
                 Select::make('position')
                     ->options([
                         'Staff' => 'Staff',
-                        'Intern' => 'Magang',
+                        'Magang' => 'Magang',
                     ])
                     ->hidden(function($get){
                         return $get('role') === 'admin';

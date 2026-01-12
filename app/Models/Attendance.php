@@ -29,4 +29,9 @@ class Attendance extends Model
     {
         return $this->logs()->orderByDesc('timestamp')->first();
     }
+
+    public function user()
+    {
+        return $this->belongsTo(User::class);
+    }
 }
