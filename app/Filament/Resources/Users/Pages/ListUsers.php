@@ -4,6 +4,7 @@ namespace App\Filament\Resources\Users\Pages;
 
 use App\Filament\Imports\UserImporter;
 use App\Filament\Resources\Users\UserResource;
+use App\Models\User;
 use Filament\Actions\CreateAction;
 use Filament\Actions\ImportAction;
 use Filament\Resources\Pages\ListRecords;
@@ -28,11 +29,31 @@ class ListUsers extends ListRecords
     public function getTabs(): array
     {
         return [
-            Tab::make('user')
-                ->label('Pengguna')
+            Tab::make('staff')
+                ->label('Staff')
                 ->icon('heroicon-o-users')
+                ->badge(
+                    function(){
+                        return User::where('position', 'Staff')
+                        ->where('role','user')->count();
+                    }
+                )
                 ->modifyQueryUsing(function ($query) {
-                    return $query->where('role', 'user');
+                    return $query->where('position', 'Staff')
+                        ->where('role','user');
+                }),
+            Tab::make('magang')
+                ->label('Magang')
+                ->icon('heroicon-o-users')
+                ->badge(
+                    function(){
+                        return User::where('position', 'Magang')
+                        ->where('role','user')->count();
+                    }
+                )
+                ->modifyQueryUsing(function ($query) {
+                    return $query->where('position', 'Magang')
+                        ->where('role','user');
                 }),
             Tab::make('admin')
                 ->label('Administrator')
