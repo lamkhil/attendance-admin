@@ -41,7 +41,8 @@ class User extends Authenticatable implements FilamentUser
     ];
 
     protected $appends = [
-        'current_shift'
+        'current_shift',
+        'today'
     ];
 
     /**
@@ -86,8 +87,8 @@ class User extends Authenticatable implements FilamentUser
             'date' => $attendance->date,
             'day' => Carbon::parse($attendance->date)->translatedFormat('l'),
 
-            'check_in' => optional($attendance->check_in)?->format('H:i'),
-            'check_out' => optional($attendance->check_out)?->format('H:i'),
+            'check_in' => isset($attendance->check_in)? Carbon::parse($attendance->check_in)->format('H:i') : null,
+            'check_out' => isset($attendance->check_out) ? Carbon::parse($attendance->check_out)->format('H:i') : null,
 
             'status' => $attendance->status,
             'work_minutes' => $attendance->work_minutes,

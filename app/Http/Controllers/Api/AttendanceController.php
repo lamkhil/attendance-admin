@@ -17,7 +17,7 @@ class AttendanceController
             ->orderByDesc('date')
             ->paginate(10);
     }
-    
+
     public function action(Request $request)
     {
         $request->validate([
@@ -114,9 +114,9 @@ class AttendanceController
 
                 // check-out (log terakhir)
                 'check_out' => $checkOut,
-                'check_out_lat' => $lastLog?->lat,
-                'check_out_lng' => $lastLog?->lng,
-                'check_out_photo' => $lastLog?->photo_url,
+                'check_out_lat' => $checkOut != null ? $lastLog?->lat : null,
+                'check_out_lng' => $checkOut != null ? $lastLog?->lng : null,
+                'check_out_photo' => $checkOut != null ? $lastLog?->photo_url : null,
 
                 // summary
                 'work_hours' => (int)$workHours,
