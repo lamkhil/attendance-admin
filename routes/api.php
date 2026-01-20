@@ -5,6 +5,9 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\Api\AuthController;
 use App\Http\Controllers\Api\UploadController;
+use App\Http\Controllers\TakonSobat\QontakController;
+use App\Http\Controllers\TakonSobat\TelegramWebhookController;
+use Illuminate\Support\Facades\Log;
 
 Route::prefix('auth')->group(function () {
 
@@ -31,7 +34,11 @@ Route::middleware('auth:sanctum')->prefix('attendance')->group(function () {
     Route::post('/action', [AttendanceController::class, 'action']);
 
     Route::get('/summary', [AttendanceController::class, 'monthlySummary']);
-
 });
 
 Route::post('/upload', [UploadController::class, 'store'])->middleware('auth:sanctum');
+
+Route::post('callback', [QontakController::class, 'callback']);
+
+Route::post('webhook/telegram', [TelegramWebhookController::class, 'handle']);
+

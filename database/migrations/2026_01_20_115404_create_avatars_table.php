@@ -1,0 +1,35 @@
+<?php
+
+use Illuminate\Database\Migrations\Migration;
+use Illuminate\Database\Schema\Blueprint;
+use Illuminate\Support\Facades\Schema;
+
+return new class extends Migration
+{
+    /**
+     * Run the migrations.
+     */
+    public function up(): void
+    {
+        Schema::create('avatars', function (Blueprint $table) {
+            $table->string('id')->primary();
+
+            $table->string('url')->nullable();
+            $table->string('url_large')->nullable();
+            $table->string('url_medium')->nullable();
+            $table->string('url_small')->nullable();
+
+            $table->string('filename')->nullable();
+            $table->integer('size')->nullable();
+            $table->timestamps();
+        });
+    }
+
+    /**
+     * Reverse the migrations.
+     */
+    public function down(): void
+    {
+        Schema::dropIfExists('avatars');
+    }
+};
