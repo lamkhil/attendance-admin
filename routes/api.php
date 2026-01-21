@@ -39,6 +39,7 @@ Route::middleware('auth:sanctum')->prefix('attendance')->group(function () {
 Route::post('/upload', [UploadController::class, 'store'])->middleware('auth:sanctum');
 
 Route::post('callback', [QontakController::class, 'callback']);
+Route::post('room-interaction', [QontakController::class, 'roomInteraction']);
 
 Route::post('webhook/telegram', [TelegramWebhookController::class, 'handle']);
 

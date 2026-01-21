@@ -12,6 +12,7 @@ use App\Models\Message;
 use App\Models\Room;
 use App\Models\Sender;
 use App\Models\Avatar;
+use App\Services\TelegramService;
 
 class QontakController extends Controller
 {
@@ -73,30 +74,55 @@ class QontakController extends Controller
                 /** =====================
                  *  ROOM
                  *  ===================== */
-                Room::updateOrCreate(
-                    ['id' => $payload['room']['id']],
-                    [
-                        'name'                   => $payload['room']['name'] ?? null,
-                        'description'            => $payload['room']['description'] ?? null,
-                        'status'                 => $payload['room']['status'] ?? null,
-                        'type'                   => $payload['room']['type'] ?? null,
-                        'channel'                => $payload['room']['channel'] ?? null,
-                        'channel_account'        => $payload['room']['channel_account'] ?? null,
-                        'organization_id'        => $payload['room']['organization_id'] ?? null,
-                        'account_uniq_id'        => $payload['room']['account_uniq_id'] ?? null,
-                        'channel_integration_id' => $payload['room']['channel_integration_id'] ?? null,
-                        'session_at'             => $payload['room']['session_at'] ?? null,
-                        'unread_count'           => $payload['room']['unread_count'] ?? 0,
-                        'avatar'                 => $payload['room']['avatar']['url'] ?? null,
-                        'tags'                   => $payload['room']['tags'] ?? [], // ✅ AMAN
-                        'resolved_at'            => $payload['room']['resolved_at'] ?? null,
-                        'resolved_by_id'         => $payload['room']['resolved_by_id'] ?? null,
-                        'resolved_by_type'       => $payload['room']['resolved_by_type'] ?? null,
-                        'external_id'            => $payload['room']['external_id'] ?? null,
-                        'created_at'             => $payload['room']['created_at'] ?? now(),
-                        'updated_at'             => $payload['room']['updated_at'] ?? now(),
-                    ]
-                );
+                $room = Room::firstOrNew(['id' => $payload['room']['id']]);
+
+                $isNewRoom = !$room->exists;
+
+                $room->fill([
+                    'name'                   => $payload['room']['name'] ?? null,
+                    'description'            => $payload['room']['description'] ?? null,
+                    'status'                 => $payload['room']['status'] ?? null,
+                    'type'                   => $payload['room']['type'] ?? null,
+                    'channel'                => $payload['room']['channel'] ?? null,
+                    'channel_account'        => $payload['room']['channel_account'] ?? null,
+                    'organization_id'        => $payload['room']['organization_id'] ?? null,
+                    'account_uniq_id'        => $payload['room']['account_uniq_id'] ?? null,
+                    'channel_integration_id' => $payload['room']['channel_integration_id'] ?? null,
+                    'session_at'             => $payload['room']['session_at'] ?? null,
+                    'unread_count'           => $payload['room']['unread_count'] ?? 0,
+                    'avatar'                 => $payload['room']['avatar']['url'] ?? null,
+                    'tags'                   => $payload['room']['tags'] ?? [],
+                    'resolved_at'            => $payload['room']['resolved_at'] ?? null,
+                    'resolved_by_id'         => $payload['room']['resolved_by_id'] ?? null,
+                    'resolved_by_type'       => $payload['room']['resolved_by_type'] ?? null,
+                    'external_id'            => $payload['room']['external_id'] ?? null,
+                    'created_at'             => $payload['room']['created_at'] ?? now(),
+                    'updated_at'             => $payload['room']['updated_at'] ?? now(),
+                ]);
+
+                $statusChanged = $room->isDirty('status');
+                $tagsChanged   = $room->isDirty('tags');
+                $unreadChanged = $room->isDirty('unread_count');
+                $needUpdate = $statusChanged || $tagsChanged || $unreadChanged;
+
+                $room->save();
+
+
+                /** =====================
+                 *  HANDLE ROOM UPDATE EVENTS
+                 *  ===================== */
+
+                if (!$isNewRoom && $needUpdate) {
+
+                    Log::info('Room updated: ' . $room->id . ', statusChanged=' . ($statusChanged ? 'true' : 'false') . ', tagsChanged=' . ($tagsChanged ? 'true' : 'false') . ', unreadChanged=' . ($unreadChanged ? 'true' : 'false'));
+                    // Misal: trigger edit message di Telegram
+                    $message = $room->messages()->oldest()->first(); // ambil pesan terakhir
+                    if ($message) {
+                        $telegram = new TelegramService();
+                        $telegram->editConversation($message);
+                    }
+                }
+
 
 
                 /** =====================
@@ -132,7 +158,7 @@ class QontakController extends Controller
             $message = Message::with(['room', 'sender'])->find($payload['id']);
 
             try {
-                if ($payload['sender']['name'] != 'DPMPTSP Surabaya') {
+                if ($payload['sender']['name'] != 'DPMPTSP Surabaya' && $payload['room']['channel'] == 'wa_cloud') {
                     event(new QontakMessageReceived($message));
                 }
             } catch (\Throwable $th) {
@@ -150,6 +176,77 @@ class QontakController extends Controller
 
             return response()->json([
                 'status' => 'error'
+            ], 500);
+        }
+    }
+
+    /**
+     * Handle room interaction webhook from Qontak
+     */
+    public function roomInteraction(Request $request)
+    {
+        $payload = $request->all();
+
+        Log::info('Qontak Room Interaction Received : ' . json_encode($payload));
+
+        // Minimal validation
+        if (!isset($payload['id'], $payload['status'])) {
+            return response()->json([
+                'status' => 'ignored',
+                'reason' => 'invalid payload'
+            ], 400);
+        }
+
+        try {
+            DB::transaction(function () use ($payload) {
+
+                /** =====================
+                 *  ROOM
+                 *  ===================== */
+                $room = Room::firstOrNew(['id' => $payload['id']]);
+                $isNewRoom = !$room->exists;
+
+                // Simpan data room
+                $room->fill([
+                    'name'        => $payload['name'] ?? null,
+                    'status'      => $payload['status'] ?? null,
+                    'tags'        => $payload['tags'] ?? [],
+                    'account_uniq_id' => $payload['account_uniq_id'] ?? null,
+                    'channel'     => $payload['channel'] ?? null,
+                    'channel_account' => $payload['channel_account'] ?? null,
+                    'updated_at'  => now(),
+                ]);
+
+                $needUpdate = $room->isDirty('status') || $room->isDirty('tags');
+                $room->save();
+
+                /** =====================
+                 *  HANDLE RESOLVED STATUS UPDATE
+                 *  ===================== */
+                if (!$isNewRoom && $needUpdate) {
+
+                    // Ambil pesan pertama / conversation message
+                    $message = $room->messages()->oldest()->first();
+
+                    if ($message) {
+                        $telegram = new TelegramService();
+                        $telegram->editConversation($message);
+                        Log::info("Telegram conversation edited for room {$room->id}");
+                    }
+                }
+            });
+
+            return response()->json(['status' => 'ok']);
+
+        } catch (\Throwable $e) {
+            Log::error('Qontak Room Interaction Error', [
+                'message' => $e->getMessage(),
+                'payload' => $payload,
+            ]);
+
+            return response()->json([
+                'status' => 'error',
+                'message' => $e->getMessage()
             ], 500);
         }
     }
