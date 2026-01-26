@@ -72,6 +72,11 @@ class User extends Authenticatable implements FilamentUser
             ->whereDate('date', now());
     }
 
+    public function attendances()
+    {
+        return $this->hasMany(Attendance::class);
+    }
+
     /**
      * Attribute: today
      */

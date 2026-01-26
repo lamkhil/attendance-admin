@@ -6,9 +6,11 @@ use App\Filament\Resources\Users\Pages\CreateUser;
 use App\Filament\Resources\Users\Pages\EditUser;
 use App\Filament\Resources\Users\Pages\ListUsers;
 use App\Filament\Resources\Users\Pages\ViewUser;
+use App\Filament\Resources\Users\RelationManagers\AttendancesRelationManager;
 use App\Filament\Resources\Users\Schemas\UserForm;
 use App\Filament\Resources\Users\Schemas\UserInfolist;
 use App\Filament\Resources\Users\Tables\UsersTable;
+use App\Models\Attendance;
 use App\Models\User;
 use BackedEnum;
 use Filament\Resources\Resource;
@@ -42,7 +44,7 @@ class UserResource extends Resource
     public static function getRelations(): array
     {
         return [
-            //
+            AttendancesRelationManager::class,
         ];
     }
 

@@ -7,6 +7,7 @@ use App\Models\AttendanceLog;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 
 class AttendanceController
@@ -15,8 +16,20 @@ class AttendanceController
     {
         return Attendance::where('user_id', $request->user()->id)
             ->orderByDesc('date')
-            ->paginate(10);
+            ->paginate(10)
+            ->through(function ($item) {
+                $item->check_in_photo = $item->check_in_photo
+                    ? Storage::disk('s3')->url($item->check_in_photo)
+                    : null;
+
+                $item->check_out_photo = $item->check_out_photo
+                    ? Storage::disk('s3')->url($item->check_out_photo)
+                    : null;
+
+                return $item;
+            });
     }
+
 
     public function action(Request $request)
     {
@@ -28,6 +41,18 @@ class AttendanceController
 
         $user = $request->user();
         $today = now()->toDateString();
+
+        $photo = $request->photo;
+
+        if ($photo) {
+            // Jika URL, ambil path setelah /storage/
+            if (filter_var($photo, FILTER_VALIDATE_URL)) {
+
+                $baseUrl = Storage::disk('s3')->url('');
+                $photo = str_replace($baseUrl, '', $photo);
+                $request->merge(['photo' => $photo]);
+            }
+        }
 
         return DB::transaction(function () use ($request, $user, $today) {
 
@@ -49,7 +74,7 @@ class AttendanceController
                 'timestamp' => now(),
                 'lat' => $request->lat,
                 'lng' => $request->lng,
-                'photo_url' => $request->photo,
+                'photo' => $request->photo,
                 'device_info' => $request->userAgent(),
             ]);
 
@@ -110,13 +135,13 @@ class AttendanceController
                 'check_in' => $checkIn,
                 'check_in_lat' => $firstLog?->lat,
                 'check_in_lng' => $firstLog?->lng,
-                'check_in_photo' => $firstLog?->photo_url,
+                'check_in_photo' => $firstLog?->photo,
 
                 // check-out (log terakhir)
                 'check_out' => $checkOut,
                 'check_out_lat' => $checkOut != null ? $lastLog?->lat : null,
                 'check_out_lng' => $checkOut != null ? $lastLog?->lng : null,
-                'check_out_photo' => $checkOut != null ? $lastLog?->photo_url : null,
+                'check_out_photo' => $checkOut != null ? $lastLog?->photo : null,
 
                 // summary
                 'work_hours' => (int)$workHours,
