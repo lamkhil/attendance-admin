@@ -32,6 +32,7 @@ Route::middleware('auth:sanctum')->prefix('attendance')->group(function () {
 
     // 🔹 Action tap absensi (log terus, auto hitung)
     Route::post('/action', [AttendanceController::class, 'action']);
+    Route::post('/action2', [AttendanceController::class, 'action2']);
 
     Route::get('/summary', [AttendanceController::class, 'monthlySummary']);
 });
