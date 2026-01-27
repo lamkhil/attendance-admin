@@ -4,17 +4,32 @@ namespace App\Http\Controllers\TakonSobat;
 
 use App\Http\Controllers\Controller;
 use App\Models\RoomTelegramThread;
+use App\Models\TelegramChannel;
+use App\Models\TelegramGroup;
 use App\Services\QontakService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Str;
 
 class TelegramWebhookController extends Controller
 {
     public function handle(Request $request)
     {
         $update = $request->all();
-
         Log::info('Telegram Webhook Update Received: ' . json_encode($update));
+
+        $chatId = null;
+        $channelName = null;
+
+        if (isset($update['channel_post']['sender_chat'])) {
+            $chatId = $update['channel_post']['sender_chat']['id'] ?? null;
+            $channelName = $update['channel_post']['sender_chat']['title'] ?? null;
+
+            TelegramChannel::firstOrCreate(
+                ['chat_id' => $chatId],
+                ['name' => $channelName, 'link' => 'https://t.me/' . $channelName, 'slug' => Str::slug($channelName)]
+            );
+        }
 
         if (!isset($update['message'])) {
             return response()->json(['ok' => true]);
@@ -22,13 +37,27 @@ class TelegramWebhookController extends Controller
 
         $message = $update['message'];
 
-        if (isset($message['from'])) {
-            if ($message['from']['is_bot'] == false && $message['from']['first_name'] != 'Telegram') {
+        if (isset($message['text'])) {
+            if ($message['text'] == 'store') {
+                $chatId = $message['chat']['id'];
+                $channelName = $message['chat']['title'] ?? 'Unnamed Channel';
+                $slug = Str::slug($channelName);
+                $link = 'https://t.me/' . $channelName;
+                TelegramGroup::firstOrCreate(
+                    ['chat_id' => $chatId],
+                    ['name' => $channelName, 'link' => $link, 'slug' => $slug]
+                );
+            }
+        }
+
+        if (isset($message['from']) && isset($message['message_thread_id'])) {
+            if ($message['from']['is_bot'] == false) {
                 // Update to qontak
-                $roomThread = RoomTelegramThread::where('telegram_discussion_message_id', $message['reply_to_message']['message_id'])->first();
+                $roomThread = RoomTelegramThread::where('telegram_thread_id', $message['message_thread_id'])
+                    ->where('telegram_chat_id', $message['chat']['id'])->first();
 
                 if (!$roomThread) {
-                    Log::warning('No RoomTelegramThread found for message_id: ' . $message['reply_to_message']['message_id']);
+                    Log::warning('No RoomTelegramThread found for message_id: ' . $message['message_thread_id']);
                     return response()->json(['ok' => true]);
                 }
 

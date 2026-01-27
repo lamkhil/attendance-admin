@@ -42,5 +42,5 @@ Route::post('/upload', [UploadController::class, 'store'])->middleware('auth:san
 Route::post('callback', [QontakController::class, 'callback']);
 Route::post('room-interaction', [QontakController::class, 'roomInteraction']);
 
-Route::post('webhook/telegram', [TelegramWebhookController::class, 'handle']);
+Route::post('webhook/telegram', [TelegramWebhookController::class, 'handle'])->name('telegram.webhook');
 

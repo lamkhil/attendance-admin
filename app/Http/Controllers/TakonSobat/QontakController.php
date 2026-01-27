@@ -12,6 +12,7 @@ use App\Models\Message;
 use App\Models\Room;
 use App\Models\Sender;
 use App\Models\Avatar;
+use App\Models\RoomTelegramThread;
 use App\Services\TelegramService;
 
 class QontakController extends Controller
@@ -22,8 +23,6 @@ class QontakController extends Controller
     public function callback(Request $request)
     {
         $payload = $request->all();
-
-        Log::info('Qontak Webhook Received : ' . json_encode($payload));
 
         // 🔐 minimal guard
         if (!isset($payload['id'], $payload['room']['id'])) {
@@ -108,22 +107,6 @@ class QontakController extends Controller
                 $room->save();
 
 
-                /** =====================
-                 *  HANDLE ROOM UPDATE EVENTS
-                 *  ===================== */
-
-                if (!$isNewRoom && $needUpdate) {
-
-                    Log::info('Room updated: ' . $room->id . ', statusChanged=' . ($statusChanged ? 'true' : 'false') . ', tagsChanged=' . ($tagsChanged ? 'true' : 'false') . ', unreadChanged=' . ($unreadChanged ? 'true' : 'false'));
-                    // Misal: trigger edit message di Telegram
-                    $message = $room->messages()->oldest()->first(); // ambil pesan terakhir
-                    if ($message) {
-                        $telegram = new TelegramService();
-                        $telegram->editConversation($message);
-                    }
-                }
-
-
 
                 /** =====================
                  *  MESSAGE
@@ -187,8 +170,6 @@ class QontakController extends Controller
     {
         $payload = $request->all();
 
-        Log::info('Qontak Room Interaction Received : ' . json_encode($payload));
-
         // Minimal validation
         if (!isset($payload['id'], $payload['status'])) {
             return response()->json([
@@ -228,10 +209,15 @@ class QontakController extends Controller
                     // Ambil pesan pertama / conversation message
                     $message = $room->messages()->oldest()->first();
 
-                    if ($message) {
+                    if ($message && $room->status == 'resolved') {
                         $telegram = new TelegramService();
-                        $telegram->editConversation($message);
-                        Log::info("Telegram conversation edited for room {$room->id}");
+                        $thread = RoomTelegramThread::where('room_id', $room->id)->first();
+                        if ($thread && $thread->telegram_thread_id) {
+                            $telegram->closeTopic(
+                                chatId: $thread->telegram_chat_id,
+                                topicId: $thread->telegram_thread_id
+                            );
+                        }
                     }
                 }
             });

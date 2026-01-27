@@ -3,25 +3,40 @@
 namespace App\Services;
 
 use App\Models\RoomTelegramThread;
+use App\Models\TelegramChannel;
+use App\Models\TelegramGroup;
 use Illuminate\Support\Facades\Http;
+use Illuminate\Support\Facades\Log;
 
 class TelegramService
 {
     protected string $botToken;
-    protected string $channelId;
+    protected $defaultChannelId;
+    protected $defaultGroupId;
 
     public function __construct()
     {
         $this->botToken = config('services.telegram.bot_token');
-        $this->channelId = config('services.telegram.chat_id');
+        $this->defaultChannelId = config('services.telegram.chat_id');
+        $this->defaultGroupId = config('services.telegram.group_id');
     }
 
     protected function api(string $method, array $payload)
     {
+        $group = TelegramGroup::where('chat_id', $payload['chat_id'] ?? null)->first();
+        $token = $group?->bot_token ?? $this->botToken;
         return Http::post(
-            "https://api.telegram.org/bot{$this->botToken}/{$method}",
+            "https://api.telegram.org/bot{$token}/{$method}",
             $payload
         )->json();
+    }
+
+    public function setWebHook(string $url, string $chatId)
+    {
+        return $this->api('setWebhook', [
+            'url' => $url,
+            'chat_id' => $chatId,
+        ]);
     }
 
     /**
@@ -43,19 +58,39 @@ class TelegramService
         }
 
         // 2️⃣ Sudah ada thread diskusi → reply
-        if ($thread->telegram_discussion_message_id) {
+        if ($thread->telegram_thread_id) {
             if ($message->file_url) {
-                return $this->replyFileToDiscussion($thread, $text, $message->file_url, $message->type);
+                return $this->sendFileToTopic(
+                    chatId: $thread->telegram_chat_id,
+                    topicId: $thread->telegram_thread_id,
+                    text: $text,
+                    fileUrl: $message->file_url,
+                    type: $message->type
+                );
             }
-            return $this->replyToDiscussion($thread, $text);
+            return $this->sendToTopic(
+                chatId: $thread->telegram_chat_id,
+                topicId: $thread->telegram_thread_id,
+                text: $text
+            );
         }
 
         // 3️⃣ Sudah di channel tapi belum ada comment → kirim normal
         if ($message->file_url) {
-            return $this->sendFileToChannel($thread, $text, $message->file_url, $message->type);
+            return $this->sendFileToTopic(
+                chatId: $thread->telegram_chat_id ?? $this->defaultChannelId,
+                topicId: "1",
+                text: $text,
+                fileUrl: $message->file_url,
+                type: $message->type
+            );
         }
 
-        return $this->sendToChannel($thread, $text);
+        return $this->sendToTopic(
+            chatId: $thread->telegram_chat_id ?? $this->defaultChannelId,
+            topicId: "1",
+            text: $text
+        );
     }
 
     /**
@@ -64,75 +99,34 @@ class TelegramService
      * @param object $message
      * @param bool $isNewConversation
      */
-    protected function buildText($message, bool $isNewConversation = false)
+    protected function buildText($message)
     {
-        // ========================
-        // Bagian info pengirim
-        // ========================
-        $info = "👤 {$message->sender->name}";
+        if ($message->participant_type == 'agent') {
+            // ========================
+            // Bagian info pengirim
+            // ========================
+            $info = "👨‍💼 Agent {$message->sender->name}";
 
-        if ($isNewConversation) {
-            $info .= "\n📞 {$message->room->account_uniq_id}";
-
-            // Tambahkan unread_count
-            if (isset($message->room->unread_count)) {
-                $info .= "\n📩 Unread: {$message->room->unread_count}";
-            }
-        }
-
-        // ========================
-        // Bagian isi pesan
-        // ========================
-        $body = "";
-        if (!empty($message->text)) {
-            $body .= "💬 {$message->text}";
-        }
-
-        // ========================
-        // Bagian tags dan status → hanya untuk new conversation
-        // ========================
-        $tagsText = "";
-        $statusText = "";
-        if ($isNewConversation) {
-
-            // Tags
-            if (!empty($message->room->tags) && count($message->room->tags) > 0) {
-                $hashtags = array_map(function ($tag) {
-                    $clean = preg_replace('/[^a-zA-Z0-9 ]/', '', $tag);
-                    $clean = str_replace(' ', '_', $clean);
-                    return "#{$clean}";
-                }, $message->room->tags);
-                $tagsText = "🏷️ " . implode(' ', $hashtags);
+            // ========================
+            // Bagian isi pesan
+            // ========================
+            $body = "";
+            if (!empty($message->text)) {
+                $body .= "💬 {$message->text}";
             }
 
-            // Status
-            if (!empty($message->room->status)) {
-                $statusEmoji = match (strtolower($message->room->status)) {
-                    'resolved'   => '✅',
-                    'unassigned' => '🟢',
-                    'blocked'    => '⛔',
-                    default      => 'ℹ️',
-                };
-                $statusText = "—————\n$statusEmoji Status: " . ucfirst($message->room->status);
-            }
-        }
+            // ========================
+            // Gabungkan semua bagian
+            // ========================
+            $textParts = [$info];
 
-        // ========================
-        // Gabungkan semua bagian
-        // ========================
-        $textParts = [$info];
-
-        if ($body !== "") {
             $textParts[] = "—————\n" . $body;
-        }
-        if ($tagsText !== "") {
-            $textParts[] = "—————\n" . $tagsText;
-        }
-        if ($statusText !== "") {
-            $textParts[] = $statusText;
+
+            return  implode("\n", $textParts);
         }
 
-        return implode("\n", $textParts);
+
+        return $message->text;
     }
 
 
@@ -140,35 +134,26 @@ class TelegramService
 
     protected function sendNewConversation($room, string $text)
     {
-        $response = $this->api('sendMessage', [
-            'chat_id' => $this->channelId,
-            'text' => $text,
-        ]);
+        $group = TelegramGroup::whereIn('slug', $room->tags)->first();
+        $groupId = $group?->chat_id ?? $this->defaultGroupId;
 
+        $responseCreateTopic = $this->createTopic(
+            chatId: $groupId,
+            name: "{$room->name} / {$room->account_uniq_id}"
+        );
         RoomTelegramThread::create([
             'room_id' => $room->id,
-            'telegram_chat_id' => $this->channelId,
-            'telegram_channel_message_id' => $response['result']['message_id'],
+            'telegram_chat_id' => $groupId,
+            'telegram_thread_id' => $responseCreateTopic['result']['message_thread_id'],
         ]);
+
+        $response = $this->sendToTopic(
+            chatId: $groupId,
+            topicId: $responseCreateTopic['result']['message_thread_id'],
+            text: $text
+        );
 
         return $response;
-    }
-
-    protected function sendToChannel(RoomTelegramThread $thread, string $text)
-    {
-        return $this->api('sendMessage', [
-            'chat_id' => $thread->telegram_chat_id,
-            'text' => $text,
-        ]);
-    }
-
-    protected function replyToDiscussion(RoomTelegramThread $thread, string $text)
-    {
-        return $this->api('sendMessage', [
-            'chat_id' => $thread->telegram_group_id,
-            'reply_to_message_id' => $thread->telegram_discussion_message_id,
-            'text' => $text,
-        ]);
     }
 
     /** =====================
@@ -177,69 +162,86 @@ class TelegramService
 
     protected function sendFileNewConversation($room, string $text, string $fileUrl, string $type)
     {
-        $response = $this->sendFile($this->channelId, null, $text, $fileUrl, $type);
 
+        $group = TelegramGroup::whereIn('slug', $room->tags)->first();
+        $groupId = $group?->chat_id ?? $this->defaultGroupId;
+
+        $responseCreateTopic = $this->createTopic(
+            chatId: $groupId,
+            name: "{$room->name} / {$room->account_uniq_id}"
+        );
         RoomTelegramThread::create([
             'room_id' => $room->id,
-            'telegram_chat_id' => $this->channelId,
-            'telegram_channel_message_id' => $response['result']['message_id'],
+            'telegram_chat_id' => $groupId,
+            'telegram_thread_id' => $responseCreateTopic['result']['message_thread_id'],
         ]);
+
+        $response = $this->sendFileToTopic(
+            chatId: $groupId,
+            topicId: $responseCreateTopic['result']['message_thread_id'],
+            text: $text,
+            fileUrl: $fileUrl,
+            type: $type
+        );
 
         return $response;
     }
 
-    protected function sendFileToChannel(RoomTelegramThread $thread, string $text, string $fileUrl, string $type)
-    {
-        return $this->sendFile($thread->telegram_chat_id, null, $text, $fileUrl, $type);
+
+    // =========================
+    // TOPIC DISCUSSION SUPPORT
+    // =========================
+
+
+    protected function sendToTopic(
+        int|string $chatId,
+        int $topicId,
+        string $text
+    ) {
+        return $this->api('sendMessage', [
+            'chat_id' => $chatId,
+            'message_thread_id' => $topicId,
+            'text' => $text,
+        ]);
     }
 
-    protected function replyFileToDiscussion(RoomTelegramThread $thread, string $text, string $fileUrl, string $type)
+    protected function createTopic(int|string $chatId, string $name)
     {
-        return $this->sendFile($thread->telegram_group_id, $thread->telegram_discussion_message_id, $text, $fileUrl, $type);
+        return $this->api('createForumTopic', [
+            'chat_id' => $chatId,
+            'name' => $name,
+        ]);
     }
 
-    protected function sendFile(int|string $chatId, ?int $replyToMessageId, string $text, string $fileUrl, string $type)
-    {
+    protected function sendFileToTopic(
+        int|string $chatId,
+        int $topicId,
+        string $text,
+        string $fileUrl,
+        string $type
+    ) {
         $payload = [
             'chat_id' => $chatId,
+            'message_thread_id' => $topicId,
             'caption' => $text,
         ];
-
-        if ($replyToMessageId) {
-            $payload['reply_to_message_id'] = $replyToMessageId;
-        }
 
         if ($type === 'image') {
             $payload['photo'] = $fileUrl;
             return $this->api('sendPhoto', $payload);
-        } else {
-            $payload['document'] = $fileUrl;
-            return $this->api('sendDocument', $payload);
         }
+
+        $payload['document'] = $fileUrl;
+        return $this->api('sendDocument', $payload);
     }
 
-    public function editConversation($message)
-    {
-        $text = $this->buildText($message, true);
-
-        $thread = RoomTelegramThread::where('room_id', $message->room->id)->first();
-
-        $this->editMessage(
-            chatId: $thread->telegram_chat_id,
-            messageId: $thread->telegram_channel_message_id,
-            newText: $text
-        );
-    }
-
-    /**
-     * Edit pesan yang sudah dikirim
-     */
-    public function editMessage(int|string $chatId, int $messageId, string $newText)
-    {
-        return $this->api('editMessageText', [
+    public function closeTopic(
+        int|string $chatId,
+        int $topicId
+    ) {
+        return $this->api('closeForumTopic', [
             'chat_id' => $chatId,
-            'message_id' => $messageId,
-            'text' => $newText,
+            'message_thread_id' => $topicId,
         ]);
     }
 }
