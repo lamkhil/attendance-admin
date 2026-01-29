@@ -27,6 +27,7 @@ class AttendancePdfController extends Controller
 
         // 🔴 eager load logs (anti S3 flood)
         $attendances = Attendance::where('user_id', $user->id)
+            ->with('user')
             ->whereMonth('date', $month)
             ->whereYear('date', $year)
             ->orderBy('date')
