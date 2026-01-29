@@ -20,45 +20,20 @@ class AttendancePdfController extends Controller
         $year   = $request->integer('year', now()->year);
         $userId = $request->integer('user_id');
 
-        abort_if(! $userId, 422, 'user_id wajib diisi');
+        abort_if(!$userId, 422);
+        $user = User::findOrFail($userId);
 
-        $user = User::find($userId);
-        abort_if(! $user, 404, 'User tidak ditemukan');
-
-        // 🔴 eager load logs (anti S3 flood)
-        $attendances = Attendance::where('user_id', $user->id)
-            ->with('user')
+        $attendances = Attendance::where('user_id', $userId)
             ->whereMonth('date', $month)
             ->whereYear('date', $year)
             ->orderBy('date')
             ->get();
 
-        abort_if($attendances->isEmpty(), 404, 'Data absensi tidak ditemukan');
-
-        $pdf = Pdf::loadView('attendance_export', [
-            'attendances' => $attendances,
-            'user'        => $user,
-            'month'       => $month,
-            'year'        => $year,
-        ])
-            ->setPaper('A4', 'portrait')
-            ->setOption('isRemoteEnabled', true);
-
-        $attendances->each(function ($a) {
-            $a->check_in_photo_base64 = $a->imageToBase64($a->check_in_photo);
-            $a->check_out_photo_base64 = $a->imageToBase64($a->check_out_photo);
-        });
-
-        dd( $attendances->first()->check_in_photo_base64 );
-
-
-        $filename = sprintf(
-            'absensi-%s-%02d-%d.pdf',
-            str($user->name)->slug(),
-            $month,
-            $year
-        );
-
-        return $pdf->stream($filename);
+        return view('attendance_export', compact(
+            'attendances',
+            'user',
+            'month',
+            'year'
+        ));
     }
 }

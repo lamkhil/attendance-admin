@@ -1,106 +1,112 @@
 <!DOCTYPE html>
 <html>
 <head>
-    <meta charset="utf-8">
-    <style>
-        body {
-            font-family: "Times New Roman", serif;
-            font-size: 12px;
-        }
+<meta charset="utf-8">
 
-        .title {
-            text-align: center;
-            font-weight: bold;
-            margin-bottom: 10px;
-        }
+<style>
+body {
+    font-family: "Times New Roman", serif;
+    font-size: 12px;
+}
 
-        table {
-            width: 100%;
-            border-collapse: collapse;
-        }
+.title {
+    text-align: center;
+    font-weight: bold;
+    margin-bottom: 10px;
+}
 
-        th, td {
-            border: 1px solid #000;
-            padding: 6px;
-            vertical-align: middle;
-            text-align: center;
-        }
+table {
+    width: 100%;
+    border-collapse: collapse;
+}
 
-        th {
-            font-weight: bold;
-        }
+th, td {
+    border: 1px solid #000;
+    padding: 6px;
+    text-align: center;
+}
 
-        td {
-            height: 90px;
-        }
+td { height: 90px; }
 
-        .name {
-            text-align: left;
-            padding-left: 8px;
-        }
+.name { text-align:left; }
 
-        .photo {
-            width: 80px;
-            height: 80px;
-            object-fit: cover;
-            border: 1px solid #000;
-        }
+.photo {
+    width: 80px;
+    height: 80px;
+    object-fit: cover;
+    border: 1px solid #000;
+}
 
-        .empty {
-            color: #999;
-            font-size: 10px;
-        }
+/* ✅ PRINT SETTING */
+@page {
+    size: A4 portrait;
+    margin: 12mm;
+}
 
-        .time {
-            font-size: 10px;
-            margin-top: 2px;
-        }
-    </style>
+@media print {
+    .no-print { display:none; }
+
+    tr {
+        page-break-inside: avoid;
+    }
+
+    table {
+        page-break-after: auto;
+    }
+}
+</style>
 </head>
+
 <body>
 
+@php
+$bulan = [
+1=>'JANUARI',2=>'FEBRUARI',3=>'MARET',4=>'APRIL',
+5=>'MEI',6=>'JUNI',7=>'JULI',8=>'AGUSTUS',
+9=>'SEPTEMBER',10=>'OKTOBER',11=>'NOVEMBER',12=>'DESEMBER'
+];
+@endphp
+
 <div class="title">
-    DAFTAR HADIR PEGAWAI<br>
-    BULAN NOVEMBER 2025
+DAFTAR HADIR PEGAWAI<br>
+BULAN {{ $bulan[$month] }} {{ $year }}
 </div>
 
+<button class="no-print" onclick="window.print()">🖨 Print</button>
+
 <table>
-    <thead>
-        <tr>
-            <th style="width:5%">NO</th>
-            <th style="width:30%">NAMA</th>
-            <th style="width:15%">TANGGAL</th>
-            <th style="width:25%">ABSEN PAGI</th>
-            <th style="width:25%">ABSEN SORE</th>
-        </tr>
-    </thead>
-    <tbody>
-        @foreach ($attendances as $attendance)
-        <tr>
-            <td>{{ $loop->iteration }}</td>
-            <td class="name">{{ $attendance->user->name }}</td>
-            <td>{{ \Carbon\Carbon::parse($attendance->date)->format('d-m-Y') }}</td>
+<thead>
+<tr>
+<th>NO</th>
+<th>NAMA</th>
+<th>TANGGAL</th>
+<th>ABSEN PAGI</th>
+<th>ABSEN SORE</th>
+</tr>
+</thead>
 
-            {{-- ABSEN PAGI --}}
-            <td>
-                @if ($attendance->check_in_photo_base64)
-                    <img src="{{ $attendance->check_in_photo_base64 }}" class="photo">
-                @else
-                    <span class="empty">TIDAK ADA</span>
-                @endif
-            </td>
+<tbody>
+@foreach ($attendances as $a)
+<tr>
+<td>{{ $loop->iteration }}</td>
+<td class="name">{{ $a->user->name }}</td>
+<td>{{ \Carbon\Carbon::parse($a->date)->format('d-m-Y') }}</td>
 
-            {{-- ABSEN SORE --}}
-            <td>
-                @if ($attendance->check_out_photo_base64)
-                    <img src="{{ $attendance->check_out_photo_base64 }}" class="photo">
-                @else
-                    <span class="empty">TIDAK ADA</span>
-                @endif
-            </td>
-        </tr>
-        @endforeach
-    </tbody>
+<td>
+@if($a->check_in_photo)
+<img src="{{ Storage::disk('s3')->url($a->check_in_photo) }}" class="photo">
+@endif
+</td>
+
+<td>
+@if($a->check_out_photo)
+<img src="{{ Storage::disk('s3')->url($a->check_out_photo) }}" class="photo">
+@endif
+</td>
+
+</tr>
+@endforeach
+</tbody>
 </table>
 
 </body>
