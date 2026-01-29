@@ -26,13 +26,7 @@ class AttendancePdfController extends Controller
         abort_if(! $user, 404, 'User tidak ditemukan');
 
         // 🔴 eager load logs (anti S3 flood)
-        $attendances = Attendance::with([
-                'logs' => function ($q) {
-                    $q->whereIn('type', ['check_in', 'check_out'])
-                      ->orderBy('timestamp');
-                }
-            ])
-            ->where('user_id', $user->id)
+        $attendances = Attendance::where('user_id', $user->id)
             ->whereMonth('date', $month)
             ->whereYear('date', $year)
             ->orderBy('date')
