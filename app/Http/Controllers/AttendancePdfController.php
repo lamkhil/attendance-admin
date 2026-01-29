@@ -45,8 +45,8 @@ class AttendancePdfController extends Controller
             ->setOption('isRemoteEnabled', true);
 
         $attendances->each(function ($a) {
-            $a->check_in_photo_base64 = $this->s3ToBase64($a->check_in_photo);
-            $a->check_out_photo_base64 = $this->s3ToBase64($a->check_out_photo);
+            $a->check_in_photo_base64 = $this->imageToBase64($a->check_in_photo);
+            $a->check_out_photo_base64 = $this->imageToBase64($a->check_out_photo);
         });
 
 
