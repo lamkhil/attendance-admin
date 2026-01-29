@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Support\Facades\Storage;
 
 class Attendance extends Model
 {
@@ -33,5 +34,34 @@ class Attendance extends Model
     public function user()
     {
         return $this->belongsTo(User::class);
+    }
+
+    public function getCheckInPhotoBase64Attribute(): ?string
+    {
+        return $this->imageToBase64($this->check_in_photo);
+    }
+
+    public function getCheckOutPhotoBase64Attribute(): ?string
+    {
+        return $this->imageToBase64($this->check_out_photo);
+    }
+
+    public function imageToBase64(?string $path): ?string
+    {
+        if (! $path) {
+            return null;
+        }
+
+        if (! Storage::disk('s3')->exists($path)) {
+            return null;
+        }
+
+        // ambil binary dari S3
+        $binary = Storage::disk('s3')->get($path);
+
+        // detect mime type
+        $mime = Storage::disk('s3')->mimeType($path) ?? 'image/jpeg';
+
+        return 'data:' . $mime . ';base64,' . base64_encode($binary);
     }
 }
