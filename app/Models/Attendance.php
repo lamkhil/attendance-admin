@@ -36,16 +36,6 @@ class Attendance extends Model
         return $this->belongsTo(User::class);
     }
 
-    public function getCheckInPhotoBase64Attribute(): ?string
-    {
-        return $this->imageToBase64($this->check_in_photo);
-    }
-
-    public function getCheckOutPhotoBase64Attribute(): ?string
-    {
-        return $this->imageToBase64($this->check_out_photo);
-    }
-
     public function imageToBase64(?string $path): ?string
     {
         if (! $path) {

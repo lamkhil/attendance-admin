@@ -36,13 +36,19 @@ class AttendancePdfController extends Controller
         abort_if($attendances->isEmpty(), 404, 'Data absensi tidak ditemukan');
 
         $pdf = Pdf::loadView('attendance_export', [
-                'attendances' => $attendances,
-                'user'        => $user,
-                'month'       => $month,
-                'year'        => $year,
-            ])
+            'attendances' => $attendances,
+            'user'        => $user,
+            'month'       => $month,
+            'year'        => $year,
+        ])
             ->setPaper('A4', 'portrait')
             ->setOption('isRemoteEnabled', true);
+
+        $attendances->each(function ($a) {
+            $a->check_in_photo_base64 = $this->s3ToBase64($a->check_in_photo);
+            $a->check_out_photo_base64 = $this->s3ToBase64($a->check_out_photo);
+        });
+
 
         $filename = sprintf(
             'absensi-%s-%02d-%d.pdf',
