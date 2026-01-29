@@ -49,6 +49,8 @@ class AttendancePdfController extends Controller
             $a->check_out_photo_base64 = $a->imageToBase64($a->check_out_photo);
         });
 
+        dd( $attendances->first()->check_in_photo_base64 );
+
 
         $filename = sprintf(
             'absensi-%s-%02d-%d.pdf',
