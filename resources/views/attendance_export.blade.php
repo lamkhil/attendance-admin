@@ -24,35 +24,29 @@ th, td {
     border: 1px solid #000;
     padding: 6px;
     text-align: center;
+    vertical-align: middle;
 }
 
-td { height: 90px; }
+td { min-height: 90px; }
 
 .name { text-align:left; }
 
 .photo {
-    width: 80px;
-    height: 80px;
-    object-fit: cover;
+    max-width: 100px;
+    max-height: 120px;
+    width: auto;
+    height: auto;
     border: 1px solid #000;
 }
 
-/* ✅ PRINT SETTING */
+/* PRINT SETTING */
 @page {
     size: A4 portrait;
     margin: 12mm;
 }
 
 @media print {
-    .no-print { display:none; }
-
-    tr {
-        page-break-inside: avoid;
-    }
-
-    table {
-        page-break-after: auto;
-    }
+    tr { page-break-inside: avoid; }
 }
 </style>
 </head>
@@ -71,8 +65,6 @@ $bulan = [
 DAFTAR HADIR PEGAWAI<br>
 BULAN {{ $bulan[$month] }} {{ $year }}
 </div>
-
-<button class="no-print" onclick="window.print()">🖨 Print</button>
 
 <table>
 <thead>
