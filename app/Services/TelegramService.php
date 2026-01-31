@@ -57,6 +57,12 @@ class TelegramService
             return $this->sendNewConversation($message->room, $text);
         }
 
+        if ($thread->telegram_thread_id == null) {
+            $encodedMessage = json_encode($message);
+            Log::error("Telegram thread ID is null for message: {$encodedMessage}");
+            return;
+        }
+
         if ($message->file_url) {
             return $this->sendFileToTopic(
                 chatId: $thread->telegram_chat_id,
