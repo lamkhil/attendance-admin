@@ -36,9 +36,7 @@ class GeminiService
     {
         $url = "https://generativelanguage.googleapis.com/v1beta/models/{$model}:generateContent";
 
-        $response = Http::timeout(15)
-            ->retry(1, 300) // retry 1x (hemat & aman)
-            ->post($url . '?key=' . config('services.gemini.key'), [
+        $body = [
                 'generationConfig' => [
                     'maxOutputTokens' => 350, // ⛔ hemat
                     'temperature' => 0.2,     // formal & stabil
@@ -55,7 +53,15 @@ class GeminiService
                         ]
                     ]
                 ]
-            ]);
+                        ];
+        if ($model == 'gemini-1.5-flash') {
+            $url = str_replace('v1beta', 'v1', $url);
+            unset($body['system_instruction']);
+        }
+
+        $response = Http::timeout(15)
+            ->retry(1, 300) // retry 1x (hemat & aman)
+            ->post($url . '?key=' . config('services.gemini.key'), $body);
 
         if (!$response->successful()) {
             throw new \Exception(
