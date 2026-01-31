@@ -260,7 +260,7 @@ class QontakController extends Controller
         $message = trim($message);
 
         // 🤖 panggil Gemini (dengan fallback)
-        $reply = GeminiService::ask($message);
+        $reply = GeminiService::ask($message, $payload['room_id'] ?? 'global');
 
         return response()->json([
             'status' => 'ok',
