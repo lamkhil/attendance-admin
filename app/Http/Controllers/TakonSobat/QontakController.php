@@ -238,4 +238,12 @@ class QontakController extends Controller
             ], 500);
         }
     }
+
+    public function botCallback(Request $request)
+    {
+        $payload = $request->all();
+        Log::info('Qontak Bot Callback', ['payload' => $payload]);
+
+        return response()->json(['status' => 'ok', 'message' => 'Callback received']);
+    }
 }

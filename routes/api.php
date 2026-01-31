@@ -44,3 +44,5 @@ Route::post('room-interaction', [QontakController::class, 'roomInteraction']);
 
 Route::post('webhook/telegram', [TelegramWebhookController::class, 'handle'])->name('telegram.webhook');
 
+Route::post('bot', [QontakController::class, 'botCallback']);
+
