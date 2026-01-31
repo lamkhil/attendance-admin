@@ -36,23 +36,24 @@ class GeminiService
     {
         $url = "https://generativelanguage.googleapis.com/v1/models/{$model}:generateContent";
 
+        // 🔗 GABUNG SYSTEM PROMPT + USER PROMPT
+        $finalPrompt = trim(
+            SystemPrompt::text()
+                . "\n\nPertanyaan pengguna:\n"
+                . trim($prompt)
+        );
+
         $response = Http::timeout(15)
             ->retry(1, 300) // retry 1x (hemat & aman)
             ->post($url . '?key=' . config('services.gemini.key'), [
-                'systemInstruction' => [
-                    'parts' => [
-                        ['text' => SystemPrompt::text()]
-                    ]
-                ],
                 'generationConfig' => [
-                    'maxOutputTokens' => 350, // ⛔ penting buat hemat
-                    'temperature' => 0.2,     // stabil & formal
+                    'maxOutputTokens' => 350, // ⛔ hemat
+                    'temperature' => 0.2,     // formal & stabil
                 ],
                 'contents' => [
                     [
-                        'role' => 'user',
                         'parts' => [
-                            ['text' => trim($prompt)]
+                            ['text' => $finalPrompt]
                         ]
                     ]
                 ]
@@ -113,4 +114,3 @@ Aturan sumber & referensi:
 PROMPT;
     }
 }
-
