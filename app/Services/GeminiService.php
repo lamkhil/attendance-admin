@@ -12,9 +12,12 @@ class GeminiService
     {
         $key = 'chatbot:' . $roomId;
 
-        if (!RateLimiter::attempt($key, 5)) {
-            return "Aduh sebentar, otakku lagi ngeblank 🤯. Coba kirim pesan beberapa saat lagi ya.";
+        if (!RateLimiter::remaining($key, 5)) {
+            $seconds = RateLimiter::availableIn($key);
+            return "Aduh sebentar, otakku lagi ngeblank 🤯. Coba kirim pesan ".$seconds." detik lagi";
         }
+
+        RateLimiter::increment($key);
 
         $maxPromptLength = 1000; // karakter
         if (strlen($prompt) > $maxPromptLength) {
