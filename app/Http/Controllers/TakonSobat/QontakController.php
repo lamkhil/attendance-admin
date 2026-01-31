@@ -13,6 +13,7 @@ use App\Models\Room;
 use App\Models\Sender;
 use App\Models\Avatar;
 use App\Models\RoomTelegramThread;
+use App\Services\GeminiService;
 use App\Services\TelegramService;
 
 class QontakController extends Controller
@@ -225,7 +226,6 @@ class QontakController extends Controller
             });
 
             return response()->json(['status' => 'ok']);
-
         } catch (\Throwable $e) {
             Log::error('Qontak Room Interaction Error', [
                 'message' => $e->getMessage(),
@@ -242,10 +242,31 @@ class QontakController extends Controller
     public function botCallback(Request $request)
     {
         $payload = $request->all();
-        Log::info('Qontak Bot Callback', ['payload' => $payload]);
+        $message = $payload['message']; // ❗tetap seperti ini
 
-        return response()->json(['status' => 'ok', 'data' => [
-            'message' => 'This is bot callback response'
-        ]]);
+        if (!$message || !is_string($message)) {
+            return response()->json([
+                'status' => 'ok',
+                'data' => [
+                    'message' => 'Kami tidak bisa memproses pesan Anda saat ini.'
+                ]
+            ]);
+        }
+
+        Log::info('Qontak Bot Callback', [
+            'message' => $message,
+        ]);
+
+        $message = trim($message);
+
+        // 🤖 panggil Gemini (dengan fallback)
+        $reply = GeminiService::ask($message);
+
+        return response()->json([
+            'status' => 'ok',
+            'data' => [
+                'message' => $reply
+            ]
+        ]);
     }
 }

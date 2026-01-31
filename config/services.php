@@ -42,5 +42,7 @@ return [
     'qontak' => [
         'token' => env('QONTAK_API_TOKEN'),
     ],
-
+    'gemini' => [
+        'key' => env('GEMINI_API_KEY'),
+    ],
 ];
