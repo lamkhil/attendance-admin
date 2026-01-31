@@ -9,10 +9,7 @@ class GeminiService
 {
     public static function ask(string $prompt): string
     {
-        $models = [
-            config('ai.models.primary'),
-            config('ai.models.fallback'),
-        ];
+        $models = config('ai.models');
 
         foreach ($models as $model) {
             try {
