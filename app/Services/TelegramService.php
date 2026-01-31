@@ -202,7 +202,7 @@ class TelegramService
     protected function sendFileToTopic(
         int|string $chatId,
         int $topicId,
-        string $text,
+        $text,
         string $fileUrl,
         string $type
     ) {
