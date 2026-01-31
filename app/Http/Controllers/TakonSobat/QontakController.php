@@ -244,6 +244,8 @@ class QontakController extends Controller
         $payload = $request->all();
         Log::info('Qontak Bot Callback', ['payload' => $payload]);
 
-        return response()->json(['status' => 'ok', 'message' => 'Callback received']);
+        return response()->json(['status' => 'ok', 'data' => [
+            'message' => 'This is bot callback response'
+        ]]);
     }
 }
