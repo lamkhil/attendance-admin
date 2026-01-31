@@ -43,7 +43,7 @@ class GeminiService
                     'maxOutputTokens' => 350, // ⛔ hemat
                     'temperature' => 0.2,     // formal & stabil
                 ],
-                'system_instructions' => [
+                'system_instruction' => [
                     'parts' => [
                         ['text' => SystemPrompt::text()]
                     ]
