@@ -77,6 +77,8 @@ class QontakController extends Controller
 
                 $isNewRoom = !$room->exists;
 
+                $lastTag = !empty($tags) ? end($tags) : null;
+
                 $room->fill([
                     'name'                   => $payload['room']['name'] ?? null,
                     'description'            => $payload['room']['description'] ?? null,
@@ -90,7 +92,7 @@ class QontakController extends Controller
                     'session_at'             => $payload['room']['session_at'] ?? null,
                     'unread_count'           => $payload['room']['unread_count'] ?? 0,
                     'avatar'                 => $payload['room']['avatar']['url'] ?? null,
-                    'tags'                   => $payload['room']['tags'] ?? [],
+                    'tags'                   => $lastTag ? [$lastTag] : [],
                     'resolved_at'            => $payload['room']['resolved_at'] ?? null,
                     'resolved_by_id'         => $payload['room']['resolved_by_id'] ?? null,
                     'resolved_by_type'       => $payload['room']['resolved_by_type'] ?? null,

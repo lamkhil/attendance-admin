@@ -120,6 +120,9 @@ class TelegramService
 
     protected function sendNewConversation($room, string $text)
     {
+        if ($text == '0') {
+            return;
+        }
         $group = TelegramGroup::whereIn('slug', $room->tags)->first();
         if ($group == null) {
             return;
