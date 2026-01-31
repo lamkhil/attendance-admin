@@ -34,10 +34,6 @@ class GeminiService
         $url = "https://generativelanguage.googleapis.com/v1beta/models/{$model}:generateContent";
 
         $body = [
-                'generationConfig' => [
-                    'maxOutputTokens' => 350, // ⛔ hemat
-                    'temperature' => 0.2,     // formal & stabil
-                ],
                 'system_instruction' => [
                     'parts' => [
                         ['text' => SystemPrompt::text()]
