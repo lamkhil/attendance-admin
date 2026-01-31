@@ -80,7 +80,13 @@ class GeminiService
                     ['text' => SystemPrompt::text()]
                 ]
             ],
-            'contents' => $contents
+            'contents' => $contents,
+            'tools' => [
+                [
+                    'url_context' => new \stdClass(),
+                    'google_search' => new \stdClass()
+                ]
+            ],
         ];
 
         $response = Http::timeout(15)
