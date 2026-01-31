@@ -215,7 +215,7 @@ class TelegramService
         $payload = [
             'chat_id' => $chatId,
             'message_thread_id' => $topicId,
-            'caption' => $text,
+            'caption' => $text ?? '',
         ];
 
         if ($type === 'image') {
