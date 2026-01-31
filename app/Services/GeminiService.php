@@ -8,30 +8,45 @@ use Illuminate\Support\Facades\RateLimiter;
 
 class GeminiService
 {
-    public static function ask(string $prompt, $roomId): string
+    protected static $contextCache = []; // menyimpan context per room (sederhana)
+
+    public static function ask(string $prompt, string $roomId): string
     {
         $key = 'chatbot:' . $roomId;
 
+        // Rate limiter
         if (!RateLimiter::remaining($key, 5)) {
             $seconds = RateLimiter::availableIn($key);
             return "Aduh sebentar, otakku lagi ngeblank 🤯. Coba kirim pesan ".$seconds." detik lagi";
         }
-
         RateLimiter::increment($key);
 
-        $maxPromptLength = 1000; // karakter
+        // Batasi panjang prompt
+        $maxPromptLength = 1000;
         if (strlen($prompt) > $maxPromptLength) {
             return "Pesan terlalu panjang, mohon ringkas agar bisa saya pahami.";
         }
 
+        // Ambil context sebelumnya (maks 5 interaksi terakhir)
+        $context = self::$contextCache[$roomId] ?? [];
+
+        // Tambahkan prompt terbaru ke context
+        $context[] = ['role' => 'user', 'content' => $prompt];
+        if (count($context) > 5) {
+            array_shift($context); // hapus pesan paling lama
+        }
+
+        // Simpan context kembali
+        self::$contextCache[$roomId] = $context;
 
         $models = config('ai.models');
 
         foreach ($models as $model) {
             try {
-                $answer = self::call($model, $prompt);
-
+                $answer = self::call($model, $prompt, $context);
                 if ($answer) {
+                    // simpan jawaban AI ke context
+                    self::$contextCache[$roomId][] = ['role' => 'assistant', 'content' => $answer];
                     return $answer;
                 }
             } catch (\Throwable $e) {
@@ -42,12 +57,22 @@ class GeminiService
             }
         }
 
-        return "Mohon maaf, pesan Anda tidak dapat kami jawab melalui sesi saat ini. Untuk memperoleh informasi yang jelas dan akurat, silakan menghubungi petugas DPMPTSP Kota Surabaya pada jam operasional.";
+        return "Mohon maaf, pesan Anda tidak dapat kami jawab melalui sesi saat ini. Silakan hubungi petugas DPMPTSP Kota Surabaya pada jam operasional.";
     }
 
-    protected static function call(string $model, string $prompt): ?string
+    protected static function call(string $model, string $prompt, array $context = []): ?string
     {
         $url = "https://generativelanguage.googleapis.com/v1beta/models/{$model}:generateContent";
+
+        // Susun context + prompt untuk dikirim ke model
+        $contents = [];
+        foreach ($context as $c) {
+            $contents[] = [
+                'parts' => [
+                    ['text' => ($c['role'] === 'user' ? "User: " : "Assistant: ") . $c['content']]
+                ]
+            ];
+        }
 
         $body = [
             'system_instruction' => [
@@ -55,17 +80,11 @@ class GeminiService
                     ['text' => SystemPrompt::text()]
                 ]
             ],
-            'contents' => [
-                [
-                    'parts' => [
-                        ['text' => trim($prompt)]
-                    ]
-                ]
-            ]
+            'contents' => $contents
         ];
 
         $response = Http::timeout(15)
-            ->retry(1, 300) // retry 1x (hemat & aman)
+            ->retry(1, 300)
             ->post($url . '?key=' . config('services.gemini.key'), $body);
 
         if (!$response->successful()) {
