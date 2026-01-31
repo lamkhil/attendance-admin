@@ -34,7 +34,7 @@ class GeminiService
 
     protected static function call(string $model, string $prompt): ?string
     {
-        $url = "https://generativelanguage.googleapis.com/v1/models/{$model}:generateContent";
+        $url = "https://generativelanguage.googleapis.com/v1beta/models/{$model}:generateContent";
 
         $response = Http::timeout(15)
             ->retry(1, 300) // retry 1x (hemat & aman)
