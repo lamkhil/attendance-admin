@@ -57,38 +57,18 @@ class TelegramService
             return $this->sendNewConversation($message->room, $text);
         }
 
-        // 2️⃣ Sudah ada thread diskusi → reply
-        if ($thread->telegram_thread_id) {
-            if ($message->file_url) {
-                return $this->sendFileToTopic(
-                    chatId: $thread->telegram_chat_id,
-                    topicId: $thread->telegram_thread_id,
-                    text: $text,
-                    fileUrl: $message->file_url,
-                    type: $message->type
-                );
-            }
-            return $this->sendToTopic(
-                chatId: $thread->telegram_chat_id,
-                topicId: $thread->telegram_thread_id,
-                text: $text
-            );
-        }
-
-        // 3️⃣ Sudah di channel tapi belum ada comment → kirim normal
         if ($message->file_url) {
             return $this->sendFileToTopic(
-                chatId: $thread->telegram_chat_id ?? $this->defaultChannelId,
-                topicId: "1",
+                chatId: $thread->telegram_chat_id,
+                topicId: $thread->telegram_thread_id,
                 text: $text,
                 fileUrl: $message->file_url,
                 type: $message->type
             );
         }
-
         return $this->sendToTopic(
-            chatId: $thread->telegram_chat_id ?? $this->defaultChannelId,
-            topicId: "1",
+            chatId: $thread->telegram_chat_id,
+            topicId: $thread->telegram_thread_id,
             text: $text
         );
     }
@@ -135,7 +115,10 @@ class TelegramService
     protected function sendNewConversation($room, string $text)
     {
         $group = TelegramGroup::whereIn('slug', $room->tags)->first();
-        $groupId = $group?->chat_id ?? $this->defaultGroupId;
+        if ($group == null) {
+            return;
+        }
+        $groupId = $group?->chat_id;
 
         $responseCreateTopic = $this->createTopic(
             chatId: $groupId,
@@ -164,7 +147,10 @@ class TelegramService
     {
 
         $group = TelegramGroup::whereIn('slug', $room->tags)->first();
-        $groupId = $group?->chat_id ?? $this->defaultGroupId;
+        if ($group == null) {
+            return;
+        }
+        $groupId = $group?->chat_id;
 
         $responseCreateTopic = $this->createTopic(
             chatId: $groupId,
