@@ -42,6 +42,7 @@ class AttendancesTable
                     ->sortable(),
                 ImageColumn::make('check_in_photo')
                     ->disk('s3')
+                    ->extraImgAttributes(['loading' => 'lazy'])
                     ->action(function ($state) {
                         \Filament\Notifications\Notification::make()
                             ->title('Check in Photo')
@@ -59,6 +60,7 @@ class AttendancesTable
                     ->sortable(),
                 ImageColumn::make('check_out_photo')
                     ->disk('s3')
+                    ->extraImgAttributes(['loading' => 'lazy'])
                     ->action(function ($state) {
                         \Filament\Notifications\Notification::make()
                             ->title('Check Out Photo')

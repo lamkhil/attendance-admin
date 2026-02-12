@@ -2,6 +2,7 @@
 
 namespace App\Services;
 
+use App\Jobs\TelegramApiJob;
 use App\Models\RoomTelegramThread;
 use App\Models\TelegramChannel;
 use App\Models\TelegramGroup;
@@ -21,15 +22,38 @@ class TelegramService
         $this->defaultGroupId = config('services.telegram.group_id');
     }
 
-    protected function api(string $method, array $payload)
+    protected function api(string $method, array $payload, bool $background = true)
     {
-        $group = TelegramGroup::where('chat_id', $payload['chat_id'] ?? null)->first();
+        if ($background) {
+            TelegramApiJob::dispatch(
+                $method,
+                $payload,
+                $this->botToken
+            );
+
+            return true; // async = no response
+        }
+
+        // sync = langsung dapet response
+        return $this->callTelegram($method, $payload);
+    }
+
+
+    protected function callTelegram(string $method, array $payload)
+    {
+        $group = \App\Models\TelegramGroup::where(
+            'chat_id',
+            $payload['chat_id'] ?? null
+        )->first();
+
         $token = $group?->bot_token ?? $this->botToken;
+
         return Http::post(
             "https://api.telegram.org/bot{$token}/{$method}",
             $payload
-        )->json();
+        );
     }
+
 
     public function setWebHook(string $url, string $chatId)
     {
@@ -44,16 +68,12 @@ class TelegramService
      */
     public function sendFromQontak($message)
     {
-        $text = $this->buildText($message);
+        $text = $this->buildText($message) ?? '';
 
         $thread = RoomTelegramThread::where('room_id', $message->room->id)->first();
 
         // 1️⃣ Belum pernah kirim ke Telegram
         if (!$thread) {
-            $text = $this->buildText($message, true);
-            if ($message->file_url) {
-                return $this->sendFileNewConversation($message->room, $text, $message->file_url, $message->type);
-            }
             return $this->sendNewConversation($message->room, $text);
         }
 
@@ -120,11 +140,22 @@ class TelegramService
 
     protected function sendNewConversation($room, string $text)
     {
-        if ($text == '0') {
+        if ((string) $text === '0') {
+
+            if (!empty($room->tags)) {
+
+                $lastTag = end($room->tags);
+
+                $qontak = new QontakService();
+                $qontak->deleteRoomTags($room->id, $lastTag);
+            }
+
             return;
         }
+
         $group = TelegramGroup::whereIn('slug', $room->tags)->first();
         if ($group == null) {
+            Log::error('Group not found: ' . $text);
             return;
         }
         $groupId = $group?->chat_id;
@@ -139,11 +170,27 @@ class TelegramService
             'telegram_thread_id' => $responseCreateTopic['result']['message_thread_id'],
         ]);
 
-        $response = $this->sendToTopic(
-            chatId: $groupId,
-            topicId: $responseCreateTopic['result']['message_thread_id'],
-            text: $text
-        );
+        $messages = $room->messages;
+
+        foreach ($messages as $message) {
+
+            $text = $this->buildText($message);
+            if ($message->file_url) {
+                $response = $this->sendFileToTopic(
+                    chatId: $groupId,
+                    topicId: $responseCreateTopic['result']['message_thread_id'],
+                    fileUrl: $message->file_url,
+                    type: $message->type,
+                    text: $text
+                );
+            } else {
+                $response = $this->sendToTopic(
+                    chatId: $groupId,
+                    topicId: $responseCreateTopic['result']['message_thread_id'],
+                    text: $text
+                );
+            }
+        }
 
         return $response;
     }
@@ -161,9 +208,21 @@ class TelegramService
         }
         $groupId = $group?->chat_id;
 
+        $prefix = '';
+
+        if (!empty($room->tags)) {
+            if (in_array('oss', $room->tags)) {
+                $prefix .= '(OSS) ';
+            }
+
+            if (in_array('ssw', $room->tags)) {
+                $prefix .= '(SSW) ';
+            }
+        }
+
         $responseCreateTopic = $this->createTopic(
             chatId: $groupId,
-            name: "{$room->name} / {$room->account_uniq_id}"
+           name: trim("{$prefix}{$room->name} / {$room->account_uniq_id}")
         );
         RoomTelegramThread::create([
             'room_id' => $room->id,
@@ -205,7 +264,7 @@ class TelegramService
         return $this->api('createForumTopic', [
             'chat_id' => $chatId,
             'name' => $name,
-        ]);
+        ], false);
     }
 
     protected function sendFileToTopic(
@@ -237,6 +296,16 @@ class TelegramService
         return $this->api('closeForumTopic', [
             'chat_id' => $chatId,
             'message_thread_id' => $topicId,
-        ]);
+        ], false);
+    }
+
+    public function deleteTopic(
+        int|string $chatId,
+        int $topicId
+    ) {
+        return $this->api('deleteForumTopic', [
+            'chat_id' => $chatId,
+            'message_thread_id' => $topicId,
+        ], false);
     }
 }

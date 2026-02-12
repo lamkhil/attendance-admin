@@ -167,6 +167,7 @@ class AttendanceController
 
         $user = $request->user();
 
+        //datetime: 2026-01-26T08:19:43.000
         // 🔑 DATETIME GLOBAL
         $actionTime = $request->filled('datetime')
             ? Carbon::parse($request->datetime)

@@ -27,6 +27,7 @@ class QontakController extends Controller
 
         // 🔐 minimal guard
         if (!isset($payload['id'], $payload['room']['id'])) {
+            Log::error('Invalid Payload');
             return response()->json([
                 'status' => 'ignored',
                 'reason' => 'invalid payload'
@@ -77,9 +78,10 @@ class QontakController extends Controller
                 $room = Room::firstOrNew(['id' => $payload['room']['id']]);
 
                 $isNewRoom = !$room->exists;
+                $tags = $payload['room']['tags'];
 
                 $lastTag = !empty($tags) ? end($tags) : null;
-
+                
                 $room->fill([
                     'name'                   => $payload['room']['name'] ?? null,
                     'description'            => $payload['room']['description'] ?? null,
@@ -93,7 +95,7 @@ class QontakController extends Controller
                     'session_at'             => $payload['room']['session_at'] ?? null,
                     'unread_count'           => $payload['room']['unread_count'] ?? 0,
                     'avatar'                 => $payload['room']['avatar']['url'] ?? null,
-                    'tags'                   => $lastTag ? [$lastTag] : [],
+                    'tags'                   => $payload['room']['tags'],
                     'resolved_at'            => $payload['room']['resolved_at'] ?? null,
                     'resolved_by_id'         => $payload['room']['resolved_by_id'] ?? null,
                     'resolved_by_type'       => $payload['room']['resolved_by_type'] ?? null,
@@ -216,7 +218,7 @@ class QontakController extends Controller
                         $telegram = new TelegramService();
                         $thread = RoomTelegramThread::where('room_id', $room->id)->first();
                         if ($thread && $thread->telegram_thread_id) {
-                            $telegram->closeTopic(
+                            $telegram->deleteTopic(
                                 chatId: $thread->telegram_chat_id,
                                 topicId: $thread->telegram_thread_id
                             );

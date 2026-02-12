@@ -58,4 +58,45 @@ class QontakService
 
         return $response->json();
     }
+
+    /**
+     * Resolve Room
+     *
+     * @param string $roomId
+     * @param string $agentId
+     * @return array
+     */
+    public function resolveRoom(
+        string $roomId,
+        string $agentId
+    ): array {
+        $response = Http::withHeaders([
+            'Authorization' => "Bearer {$this->token}",
+        ])->asForm()->put(
+            "{$this->baseUrl}/rooms/{$roomId}/resolve",
+            [
+                'agent_id' => $agentId,
+            ]
+        );
+
+        return $response->json();
+    }
+
+    /**
+     * Hapus tag tertentu pada room
+     *
+     * @param string $roomId
+     * @param string $tag
+     * @return array
+     */
+    public function deleteRoomTags(string $roomId, string $tag): array
+    {
+        $response = Http::withHeaders([
+            'Authorization' => "Bearer {$this->token}",
+        ])->delete("{$this->baseUrl}/rooms/{$roomId}/tags", [
+            'tag' => $tag,
+        ]);
+
+        return $response->json();
+    }
 }
