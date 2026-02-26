@@ -72,6 +72,9 @@ BULAN {{ $bulan[$month] }} {{ $year }}
 <th>NO</th>
 <th>NAMA</th>
 <th>TANGGAL</th>
+<th>MASUK</th>
+<th>PULANG</th>
+<th>STATUS</th>
 <th>ABSEN PAGI</th>
 <th>ABSEN SORE</th>
 </tr>
@@ -83,6 +86,9 @@ BULAN {{ $bulan[$month] }} {{ $year }}
 <td>{{ $loop->iteration }}</td>
 <td class="name">{{ $a->user->name }}</td>
 <td>{{ \Carbon\Carbon::parse($a->date)->format('d-m-Y') }}</td>
+<td>{{\Carbon\Carbon::parse($a->check_in)->format('H:i:s') }}</td>
+<td>{{\Carbon\Carbon::parse($a->check_out)->format('H:i:s') }}</td>
+<td>{{ strtoupper($a->status) }}</td>
 
 <td>
 @if($a->check_in_photo)
