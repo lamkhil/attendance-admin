@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\TakonSobat;
 
 use App\Http\Controllers\Controller;
+use App\Models\Room;
 use App\Models\RoomTelegramThread;
 use App\Models\TelegramChannel;
 use App\Models\TelegramGroup;
@@ -99,6 +100,15 @@ class TelegramWebhookController extends Controller
         $qontak = new QontakService();
 
         $text = $message['text'] ?? '';
+
+        if ($text == 'resolved' || $text == 'resolve' || $text == 'Resolve' || $text == 'Resolved') {
+            $room = Room::find($roomId);
+            $agent = $room->messages()->where('participant_type', 'agent')->first();
+            if ($agent != null) {
+                $qontak->resolveRoom($roomId, $agent->participant_id);
+            }
+            return;
+        }
 
         // Jika ada file / media, bisa ditambahkan nanti
         $fileUrl = null;

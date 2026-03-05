@@ -167,6 +167,7 @@ class AttendanceController
 
         $user = $request->user();
 
+        //datetime: 2026-01-26T08:19:43.000
         // 🔑 DATETIME GLOBAL
         $actionTime = $request->filled('datetime')
             ? Carbon::parse($request->datetime)
@@ -296,18 +297,18 @@ class AttendanceController
             Carbon::TUESDAY,
             Carbon::WEDNESDAY,
             Carbon::THURSDAY => [
-                'start' => '07:30',
-                'end'   => '16:00',
+                'start' => '08:30',
+                'end'   => '15:00',
             ],
 
             Carbon::FRIDAY => [
-                'start' => '07:30',
-                'end'   => '16:30',
+                'start' => '08:30',
+                'end'   => '15:30',
             ],
 
             Carbon::SATURDAY => [
                 'start' => '09:00',
-                'end'   => '14:00',
+                'end'   => '11:00',
             ],
 
             default => null, // Minggu

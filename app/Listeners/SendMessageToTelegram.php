@@ -4,8 +4,9 @@ namespace App\Listeners;
 
 use App\Events\QontakMessageReceived;
 use App\Services\TelegramService;
+use Illuminate\Contracts\Queue\ShouldQueue;
 
-class SendMessageToTelegram
+class SendMessageToTelegram implements ShouldQueue
 {
     public function handle(QontakMessageReceived $event)
     {

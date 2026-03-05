@@ -6,6 +6,7 @@ use App\Filament\Resources\Attendances\Pages\CreateAttendance;
 use App\Filament\Resources\Attendances\Pages\EditAttendance;
 use App\Filament\Resources\Attendances\Pages\ListAttendances;
 use App\Filament\Resources\Attendances\Pages\ViewAttendance;
+use App\Filament\Resources\Attendances\RelationManagers\LogsRelationManager;
 use App\Filament\Resources\Attendances\Schemas\AttendanceForm;
 use App\Filament\Resources\Attendances\Schemas\AttendanceInfolist;
 use App\Filament\Resources\Attendances\Tables\AttendancesTable;
@@ -42,7 +43,7 @@ class AttendanceResource extends Resource
     public static function getRelations(): array
     {
         return [
-            //
+            LogsRelationManager::class,
         ];
     }
 
