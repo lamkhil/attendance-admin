@@ -5,7 +5,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\Api\AuthController;
 use App\Http\Controllers\Api\UploadController;
-use App\Http\Controllers\PresensiKerjaBaktiController;
+use App\Http\Controllers\Api\PresensiKerjaBaktiController;
 use App\Http\Controllers\TakonSobat\QontakController;
 use App\Http\Controllers\TakonSobat\TelegramWebhookController;
 use Illuminate\Support\Facades\Log;
